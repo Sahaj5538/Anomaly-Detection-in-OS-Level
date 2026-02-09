@@ -1,41 +1,53 @@
 import psutil
 import time
 import csv
-from datetime import datetime
 import os
+from datetime import datetime
+from collections import defaultdict
+import statistics
 
-# ==============================
+# =========================
 # Configuration
-# ==============================
-INTERVAL_SECONDS = 5
+# =========================
+INTERVAL = 5  # seconds
 DATA_DIR = "../data"
 CSV_FILE = os.path.join(DATA_DIR, "process_data.csv")
+WINDOW_SIZE = 5  # for CPU variability
 
-# ==============================
-# Ensure data directory exists
-# ==============================
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# ==============================
-# Initialize CSV file with header
-# ==============================
+# =========================
+# State storage (for time-based features)
+# =========================
+cpu_history = defaultdict(list)
+memory_history = {}
+restart_tracker = defaultdict(int)
+
+# =========================
+# CSV initialization
+# =========================
 if not os.path.exists(CSV_FILE):
-    with open(CSV_FILE, mode="w", newline="") as file:
-        writer = csv.writer(file)
+    with open(CSV_FILE, "w", newline="") as f:
+        writer = csv.writer(f)
         writer.writerow([
             "timestamp",
             "pid",
             "process_name",
+            "parent_process",
             "cpu_usage",
+            "cpu_std",
             "memory_usage",
-            "runtime_seconds"
+            "memory_delta",
+            "runtime",
+            "cpu_per_second",
+            "child_process_count"
         ])
 
-# ==============================
-# Live Monitoring Loop
-# ==============================
-print("Starting live OS process monitoring...\n")
+print("✅ Real-time OS process monitoring started...\n")
 
+# =========================
+# Monitoring loop
+# =========================
 while True:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -44,33 +56,67 @@ while True:
             pid = proc.pid
             name = proc.name()
             cpu = proc.cpu_percent(interval=0.1)
-            memory = proc.memory_percent()
+            mem = proc.memory_percent()
             runtime = time.time() - proc.create_time()
 
-            # Print live output
-            print(
-                f"[{timestamp}] "
-                f"PID={pid} | "
-                f"Name={name} | "
-                f"CPU={cpu:.2f}% | "
-                f"Memory={memory:.2f}% | "
-                f"Runtime={int(runtime)}s"
+            # -------- CPU variability --------
+            cpu_history[pid].append(cpu)
+            if len(cpu_history[pid]) > WINDOW_SIZE:
+                cpu_history[pid].pop(0)
+
+            cpu_std = (
+                statistics.stdev(cpu_history[pid])
+                if len(cpu_history[pid]) > 1 else 0
             )
 
-            # Save to CSV
-            with open(CSV_FILE, mode="a", newline="") as file:
-                writer = csv.writer(file)
+            # -------- Memory growth --------
+            prev_mem = memory_history.get(pid, mem)
+            mem_delta = mem - prev_mem
+            memory_history[pid] = mem
+
+            # -------- CPU vs runtime mismatch --------
+            cpu_per_second = cpu / runtime if runtime > 0 else 0
+
+            # -------- Parent process --------
+            try:
+                parent = proc.parent().name()
+            except Exception:
+                parent = "Unknown"
+
+            # -------- Child process count --------
+            try:
+                child_count = len(proc.children())
+            except Exception:
+                child_count = 0
+
+            # -------- Print live output --------
+            print(
+                f"[{timestamp}] {name} (PID {pid}) | "
+                f"CPU={cpu:.2f}% | CPU_STD={cpu_std:.2f} | "
+                f"MEM={mem:.2f}% | ΔMEM={mem_delta:.2f}% | "
+                f"Runtime={int(runtime)}s | "
+                f"Parent={parent} | Children={child_count}"
+            )
+
+            # -------- Save to CSV --------
+            with open(CSV_FILE, "a", newline="") as f:
+                writer = csv.writer(f)
                 writer.writerow([
                     timestamp,
                     pid,
                     name,
-                    cpu,
-                    memory,
-                    int(runtime)
+                    parent,
+                    round(cpu, 2),
+                    round(cpu_std, 2),
+                    round(mem, 2),
+                    round(mem_delta, 2),
+                    int(runtime),
+                    round(cpu_per_second, 4),
+                    child_count
                 ])
 
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
 
     print("\n--- Waiting for next cycle ---\n")
-    time.sleep(INTERVAL_SECONDS)
+    time.sleep(INTERVAL)
