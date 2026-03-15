@@ -43,7 +43,7 @@ if not os.path.exists(CSV_FILE):
             "child_process_count"
         ])
 
-print("✅ Real-time OS process monitoring started...\n")
+print("Real-time OS process monitoring started...\n")
 
 # =========================
 # Monitoring loop
@@ -90,13 +90,13 @@ while True:
                 child_count = 0
 
             # -------- Print live output --------
-            print(
-                f"[{timestamp}] {name} (PID {pid}) | "
-                f"CPU={cpu:.2f}% | CPU_STD={cpu_std:.2f} | "
-                f"MEM={mem:.2f}% | ΔMEM={mem_delta:.2f}% | "
-                f"Runtime={int(runtime)}s | "
-                f"Parent={parent} | Children={child_count}"
-            )
+            # print(
+            #     f"[{timestamp}] {name} (PID {pid}) | "
+            #     f"CPU={cpu:.2f}% | CPU_STD={cpu_std:.2f} | "
+            #     f"MEM={mem:.2f}% | ΔMEM={mem_delta:.2f}% | "
+            #     f"Runtime={int(runtime)}s | "
+            #     f"Parent={parent} | Children={child_count}"
+            # )
 
             # -------- Save to CSV --------
             with open(CSV_FILE, "a", newline="") as f:
@@ -118,5 +118,5 @@ while True:
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
 
-    print("\n--- Waiting for next cycle ---\n")
+    # print("\n--- Waiting for next cycle ---\n")
     time.sleep(INTERVAL)
