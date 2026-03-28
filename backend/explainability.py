@@ -112,3 +112,16 @@ for i in range(max_explain):
 print("Anomaly explanations saved.")
 
 print("\nExplainability analysis completed.")
+def generate_text_explanation(shap_values, feature_values, feature_names):
+    
+    explanation = []
+
+    for i in range(len(feature_names)):
+        value = shap_values[i]
+
+        if value > 0:
+            explanation.append(f"{feature_names[i]} increased anomaly risk")
+        elif value < 0:
+            explanation.append(f"{feature_names[i]} reduced anomaly risk")
+
+    return explanation
