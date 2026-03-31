@@ -107,9 +107,9 @@
                             </div>
                         </div>
                         <div class="glass-card stat-card accent-red">
-                            <div class="stat-icon"><i class="fa-solid fa-bug"></i></div>
+                            <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                             <div class="stat-info">
-                                <h3>Active Anomalies</h3>
+                                <h3>High/Medium Risk</h3>
                                 <div class="stat-value" id="dash-anomaly-proc">0</div>
                             </div>
                         </div>
@@ -158,12 +158,13 @@
                         </div>
                         <div class="filters-group" style="display:flex; gap:12px;">
                             <select id="filter-status" class="modern-select">
-                                <option value="all">All Statuses</option>
-                                <option value="normal">Normal Only</option>
-                                <option value="anomaly">Anomalies Only</option>
+                                <option value="all">All Processes</option>
+                                <option value="high">High Risk Only</option>
+                                <option value="medium">Medium Risk</option>
+                                <option value="low">Low Risk</option>
                             </select>
                             <select id="sort-by" class="modern-select">
-                                <option value="anomaly-desc">Sort by Threat</option>
+                                <option value="risk-desc">Sort by Risk</option>
                                 <option value="cpu-desc">Sort by CPU (High-Low)</option>
                                 <option value="ram-desc">Sort by RAM (High-Low)</option>
                             </select>
@@ -178,10 +179,10 @@
                                         <th>System ID</th>
                                         <th>Process Name</th>
                                         <th>PID</th>
-                                        <th>CPU (%)</th>
-                                        <th>RAM (MB)</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
+                                        <th>Risk Level</th>
+                                        <th style="max-width:200px;">Reason</th>
+                                        <th>Recommended Action</th>
+                                        <th>Controls</th>
                                     </tr>
                                 </thead>
                                 <tbody id="full-process-table-body">
@@ -289,7 +290,7 @@
 
     <!-- Slide-in Panel for Process XAI Details -->
     <div id="panel-overlay" class="panel-overlay hidden"></div>
-    <div id="side-panel" class="side-panel">
+    <div id="side-panel" class="side-panel hidden">
         <div class="side-panel-header">
             <h3><i class="fa-solid fa-microchip"></i> Process Details</h3>
             <button id="btn-close-panel" class="btn-icon" style="font-size:20px;"><i class="fa-solid fa-xmark"></i></button>
