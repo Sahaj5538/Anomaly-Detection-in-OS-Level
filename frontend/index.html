@@ -1,3 +1,83 @@
-<html>
-    hello world
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS-Level Process Anomaly Detection</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <h1>OS-Level Process Anomaly Detection</h1>
+            <p class="subtitle">Machine Learning with Explainable AI (XAI) | Client-Server Architecture</p>
+        </div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <span class="status-dot online" id="server-status-dot"></span>
+                <span id="server-status-text">Server: Running</span>
+            </div>
+            <div class="clients-indicator">
+                <span>Connected Clients: <span id="connected-clients">0</span></span>
+            </div>
+            <div class="last-updated">Last Updated: <span id="last-updated-time">--</span></div>
+        </div>
+    </header>
+
+    <main>
+        <div class="summary-cards">
+            <div class="card summary-card">
+                <h3>Total Processes</h3>
+                <div class="value" id="total-processes">0</div>
+            </div>
+            <div class="card summary-card normal-card">
+                <h3>Normal Processes</h3>
+                <div class="value" id="normal-processes">0</div>
+            </div>
+            <div class="card summary-card anomaly-card">
+                <h3>Total Anomalies</h3>
+                <div class="value" id="total-anomalies">0</div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="card table-container">
+                <div class="card-header">
+                    <h2>Live Process Monitoring</h2>
+                    <span class="badge">Receiving data from client agents</span>
+                </div>
+                <div class="table-wrapper">
+                    <table id="process-table">
+                        <thead>
+                            <tr>
+                                <th>System ID</th>
+                                <th>Process Name</th>
+                                <th>PID</th>
+                                <th>CPU (%)</th>
+                                <th>RAM (MB)</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="process-table-body">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card explanation-panel" id="xai-panel">
+                <div class="card-header">
+                    <h2>XAI Explanation</h2>
+                </div>
+                <div class="explanation-content" id="xai-content">
+                    <div class="placeholder-text">Select a process to view anomaly explanation.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
 </html>
