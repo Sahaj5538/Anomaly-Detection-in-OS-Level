@@ -1,189 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberSphere XAI Dashboard</title>
+    <title>CyberSphere Interactive SPA</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body class="dark-theme">
+    
+    <!-- Landing Page -->
     <div id="landing-page" class="landing-container">
         <div class="landing-content">
             <div class="logo-glow"></div>
             <i class="fa-solid fa-shield-halved landing-icon"></i>
             <h1 class="landing-title">OS-Level Process Anomaly Detection</h1>
-            <p class="landing-subtitle"></p>
+            <p class="landing-subtitle">Interactive Machine Learning & XAI Monitoring System</p>
             <div class="landing-features">
-                <div class="feature-item"><i class="fa-solid fa-microchip"></i> Real-time Monitoring</div>
-                <div class="feature-item"><i class="fa-solid fa-brain"></i> AI Detection</div>
-                <div class="feature-item"><i class="fa-solid fa-magnifying-glass-chart"></i> XAI Insights</div>
+                <div class="feature-item"><i class="fa-solid fa-microchip"></i> Real-time Telemetry</div>
+                <div class="feature-item"><i class="fa-solid fa-brain"></i> Threat Detection</div>
+                <div class="feature-item"><i class="fa-solid fa-magnifying-glass-chart"></i> XAI Forensics</div>
             </div>
-            <center>
+            <div style="display:flex; justify-content:center; align-items:center;">
                 <button id="btn-start-analysis" class="btn-primary btn-large">
-                    <span>
-                        Start Analysis
-                    </span> <i class="fa-solid fa-arrow-right"></i>
+                    <span>Initiate Uplink</span> <i class="fa-solid fa-satellite-dish"></i>
                 </button>
-            </center>
+            </div>
         </div>
     </div>
 
+    <!-- Loading Overlay -->
     <div id="loading-overlay" class="hidden">
         <div class="spinner"></div>
-        <p>Connecting to Secure Server...</p>
+        <p>Establishing secure socket connection to endpoints...</p>
     </div>
 
+    <!-- Main Dashboard Application -->
     <div id="dashboard-layout" class="hidden">
+        <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <i class="fa-solid fa-shield-halved"></i>
                 <h2>CyberSphere</h2>
             </div>
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
-                <a href="#" class="nav-item"><i class="fa-solid fa-list-check"></i> Processes</a>
-                <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
-                <a href="#" class="nav-item"><i class="fa-solid fa-brain"></i> XAI Insights</a>
+            <nav class="sidebar-nav" id="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+                <a href="#" class="nav-item" data-view="processes"><i class="fa-solid fa-list-check"></i> Processes</a>
+                <a href="#" class="nav-item" data-view="analytics"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+                <a href="#" class="nav-item" data-view="xai"><i class="fa-solid fa-brain"></i> XAI Insights</a>
+                <a href="#" class="nav-item" data-view="systems"><i class="fa-solid fa-network-wired"></i> Systems <span id="nav-systems-count" class="nav-badge subtle">0</span></a>
+                <a href="#" class="nav-item" data-view="alerts"><i class="fa-solid fa-bell"></i> Alerts <span id="nav-alerts-badge" class="nav-badge danger hidden">0</span></a>
             </nav>
             <div class="sidebar-bottom">
-                <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
-                <button id="btn-stop-analysis" class="btn-danger-outline nav-item"
-                    style="width: 100%; justify-content: flex-start; border: 1px solid rgba(239, 68, 68, 0.3); color: #EF4444;">
+                <a href="#" class="nav-item" data-view="settings"><i class="fa-solid fa-gear"></i> Settings</a>
+                <button id="btn-stop-analysis" class="btn-danger-outline nav-item" style="width: 100%; justify-content: flex-start; margin-top:8px;">
                     <i class="fa-solid fa-stop"></i> Stop Analysis
                 </button>
             </div>
         </aside>
 
+        <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Universal Top Header -->
             <header class="topbot-header">
                 <div class="header-search">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" placeholder="Search processes, PIDs...">
+                    <input type="text" id="global-search" placeholder="Search processes (e.g. chrome.exe) or PIDs...">
                 </div>
-
+                
                 <div class="header-status">
                     <div class="status-pill status-running" id="global-server-status">
-                        <span class="pulsing-dot online"></span> <span id="server-status-text">Server Online</span>
+                        <span class="pulsing-dot online"></span> <span id="server-status-text">Receiving Data</span>
                     </div>
                     <div class="status-pill">
-                        <i class="fa-solid fa-network-wired"></i> <span id="connected-clients">0</span> Clients
-                    </div>
-                    <div class="status-pill">
-                        <i class="fa-solid fa-clock"></i> <span id="last-updated-time">--:--:--</span>
+                        <i class="fa-solid fa-clock"></i> Last Updated: <span id="last-updated-time">--:--:--</span>
                     </div>
                 </div>
             </header>
 
-            <div class="dashboard-grid">
-                <div class="alert-banner hidden" id="critical-alert">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <div class="alert-content">
-                        <strong>Critical Alert:</strong> <span id="alert-message">High severity anomaly detected on
-                            multiple systems.</span>
+            <!-- Page Views Wrapper -->
+            <div class="views-wrapper">
+                
+                <!-- 1. DASHBOARD VIEW (Overview) -->
+                <div id="view-dashboard" class="page-view active">
+                    <div class="page-header">
+                        <h2>System Overview</h2>
+                        <p class="text-muted">High-level telemetry and incident snapshots.</p>
                     </div>
-                    <button class="btn-icon"
-                        onclick="document.getElementById('critical-alert').classList.add('hidden')"><i
-                            class="fa-solid fa-xmark"></i></button>
+
+                    <!-- Summary Cards -->
+                    <div class="summary-cards">
+                        <div class="glass-card stat-card accent-indigo">
+                            <div class="stat-icon"><i class="fa-solid fa-microchip"></i></div>
+                            <div class="stat-info">
+                                <h3>Total Processes</h3>
+                                <div class="stat-value" id="dash-total-proc">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card stat-card accent-green">
+                            <div class="stat-icon"><i class="fa-solid fa-check-shield"></i></div>
+                            <div class="stat-info">
+                                <h3>Normal Processes</h3>
+                                <div class="stat-value" id="dash-normal-proc">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card stat-card accent-red">
+                            <div class="stat-icon"><i class="fa-solid fa-bug"></i></div>
+                            <div class="stat-info">
+                                <h3>Active Anomalies</h3>
+                                <div class="stat-value" id="dash-anomaly-proc">0</div>
+                            </div>
+                        </div>
+                        <div class="glass-card stat-card accent-indigo">
+                            <div class="stat-icon"><i class="fa-solid fa-network-wired"></i></div>
+                            <div class="stat-info">
+                                <h3>Connected Clients</h3>
+                                <div class="stat-value" id="dash-clients">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-split" style="display:grid; grid-template-columns: 2fr 1fr; gap:24px; margin-top:24px;">
+                        <!-- Mini Table -->
+                        <div class="glass-card table-section">
+                            <div class="card-header">
+                                <h3>Top Anomalous Processes</h3>
+                                <button class="btn-action" onclick="switchView('processes')">View All</button>
+                            </div>
+                            <div class="table-responsive" style="max-height: 350px;">
+                                <table class="modern-table">
+                                    <thead><tr><th>Process</th><th>System</th><th>CPU</th><th>Status</th></tr></thead>
+                                    <tbody id="dash-mini-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Mini Chart -->
+                        <div class="glass-card chart-container">
+                            <div class="card-header">
+                                <h3>System Anomalies Trend</h3>
+                            </div>
+                            <div class="chart-wrapper">
+                                <canvas id="miniAnomalyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="summary-cards">
-                    <div class="glass-card stat-card accent-indigo">
-                        <div class="stat-icon"><i class="fa-solid fa-microchip"></i></div>
-                        <div class="stat-info">
-                            <h3>Total Processes</h3>
-                            <div class="stat-value" id="total-processes">0</div>
+                <!-- 2. PROCESSES VIEW -->
+                <div id="view-processes" class="page-view hidden">
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
+                        <div>
+                            <h2>Process Explorer</h2>
+                            <p class="text-muted">Live feed from all connected clients.</p>
+                        </div>
+                        <div class="filters-group" style="display:flex; gap:12px;">
+                            <select id="filter-status" class="modern-select">
+                                <option value="all">All Statuses</option>
+                                <option value="normal">Normal Only</option>
+                                <option value="anomaly">Anomalies Only</option>
+                            </select>
+                            <select id="sort-by" class="modern-select">
+                                <option value="anomaly-desc">Sort by Threat</option>
+                                <option value="cpu-desc">Sort by CPU (High-Low)</option>
+                                <option value="ram-desc">Sort by RAM (High-Low)</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="glass-card stat-card accent-green">
-                        <div class="stat-icon"><i class="fa-solid fa-check-shield"></i></div>
-                        <div class="stat-info">
-                            <h3>Normal Processes</h3>
-                            <div class="stat-value" id="normal-processes">0</div>
-                        </div>
-                    </div>
-                    <div class="glass-card stat-card accent-red">
-                        <div class="stat-icon"><i class="fa-solid fa-bug"></i></div>
-                        <div class="stat-info">
-                            <h3>Total Anomalies</h3>
-                            <div class="stat-value" id="total-anomalies">0</div>
-                        </div>
-                    </div>
-                    <div class="glass-card stat-card accent-indigo">
-                        <div class="stat-icon"><i class="fa-solid fa-brain"></i></div>
-                        <div class="stat-info">
-                            <h3>AI Confidence</h3>
-                            <div class="stat-value">98.5%</div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="charts-row">
-                    <div class="glass-card chart-container">
-                        <div class="card-header">
-                            <h3>Global CPU Usage Trend</h3>
-                            <div class="live-badge"><span class="pulsing-dot online"></span> Live</div>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="cpuChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="glass-card chart-container">
-                        <div class="card-header">
-                            <h3>System Anomalies Trend</h3>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="anomalyChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bottom-row">
-                    <div class="glass-card table-section">
-                        <div class="card-header">
-                            <h3>Live Process Feed</h3>
-                            <span class="badge badge-indigo">Receiving data...</span>
-                        </div>
+                    <div class="glass-card table-section full-height">
                         <div class="table-responsive">
-                            <table class="modern-table" id="process-table">
+                            <table class="modern-table" id="main-process-table">
                                 <thead>
                                     <tr>
                                         <th>System ID</th>
                                         <th>Process Name</th>
                                         <th>PID</th>
-                                        <th>CPU</th>
-                                        <th>RAM</th>
+                                        <th>CPU (%)</th>
+                                        <th>RAM (MB)</th>
                                         <th>Status</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="process-table-body">
+                                <tbody id="full-process-table-body">
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                </div>
 
-                    <div class="glass-card xai-section" id="xai-panel">
-                        <div class="card-header">
-                            <h3><i class="fa-solid fa-brain" style="color:#6366F1;"></i> XAI Explanation</h3>
+                <!-- 3. ANALYTICS VIEW -->
+                <div id="view-analytics" class="page-view hidden">
+                    <div class="page-header">
+                        <h2>System Analytics</h2>
+                        <p class="text-muted">Historical trends and distributions.</p>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
+                        <div class="glass-card chart-container" style="height:350px;">
+                            <div class="card-header"><h3>Average CPU Usage Trend</h3></div>
+                            <div class="chart-wrapper"><canvas id="bigCpuChart"></canvas></div>
                         </div>
-                        <div class="xai-content" id="xai-content">
-                            <div class="empty-state">
-                                <i class="fa-solid fa-arrow-pointer"></i>
-                                <p>Select an anomalous process to view the explainable AI reasoning.</p>
-                            </div>
+                        <div class="glass-card chart-container" style="height:350px;">
+                            <div class="card-header"><h3>Average Memory Usage Trend</h3></div>
+                            <div class="chart-wrapper"><canvas id="bigMemChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="glass-card chart-container" style="height:350px;">
+                        <div class="card-header"><h3>Anomaly Detections Over Time</h3></div>
+                        <div class="chart-wrapper"><canvas id="bigAnomalyChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- 4. XAI INSIGHTS VIEW -->
+                <div id="view-xai" class="page-view hidden">
+                    <div class="page-header">
+                        <h2>XAI Global Insights</h2>
+                        <p class="text-muted">Aggregated analytics from the Isolation Forest model.</p>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+                        <div class="glass-card" style="padding:24px;">
+                            <h3 style="margin-bottom:16px;">Top Anomaly Rationales</h3>
+                            <ul class="reason-list" id="xai-reasons-list">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
+                        <div class="glass-card chart-container" style="height:350px;">
+                            <div class="card-header"><h3>Most Suspicious Processes (By Count)</h3></div>
+                            <div class="chart-wrapper"><canvas id="suspiciousProcChart"></canvas></div>
                         </div>
                     </div>
                 </div>
+
+                <!-- 5. SYSTEMS VIEW -->
+                <div id="view-systems" class="page-view hidden">
+                    <div class="page-header">
+                        <h2>Connected Endpoints</h2>
+                        <p class="text-muted">Status of client machines feeding telemetry data.</p>
+                    </div>
+                    <div class="grid-cards" id="systems-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:24px;">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- 6. ALERTS VIEW -->
+                <div id="view-alerts" class="page-view hidden">
+                    <div class="page-header" style="display:flex; justify-content:space-between;">
+                        <div>
+                            <h2>Incident Alerts</h2>
+                            <p class="text-muted">History of critical anomalies detected.</p>
+                        </div>
+                        <button class="btn-danger-outline" onclick="clearAlerts()">Clear History</button>
+                    </div>
+                    <div class="alerts-container" id="alerts-history">
+                        <div class="empty-state" style="padding:40px;">No alerts recorded yet.</div>
+                    </div>
+                </div>
+
+                <!-- 7. SETTINGS VIEW -->
+                <div id="view-settings" class="page-view hidden">
+                    <div class="page-header">
+                        <h2>Configuration Settings</h2>
+                    </div>
+                    <div class="glass-card" style="padding:32px; max-width:600px;">
+                        <div class="setting-group" style="margin-bottom:24px;">
+                            <label style="display:block; margin-bottom:8px; font-weight:500;">Telemitry Polling Interval</label>
+                            <select id="setting-interval" class="modern-select" style="width:100%; max-width:300px;">
+                                <option value="2000">Fast (2 seconds)</option>
+                                <option value="4000" selected>Balanced (4 seconds)</option>
+                                <option value="8000">Server Friendly (8 seconds)</option>
+                            </select>
+                            <p class="text-muted" style="font-size:12px; margin-top:8px;">Changes take effect immediately.</p>
+                        </div>
+                        <div class="setting-group">
+                            <label style="display:block; margin-bottom:8px; font-weight:500;">Enable UI Animations</label>
+                            <label class="switch" style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+                                <input type="checkbox" checked id="setting-animations" style="width:18px; height:18px;">
+                                <span>Smooth Page Transitions & Pulses</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
 
+    <!-- Slide-in Panel for Process XAI Details -->
+    <div id="panel-overlay" class="panel-overlay hidden"></div>
+    <div id="side-panel" class="side-panel">
+        <div class="side-panel-header">
+            <h3><i class="fa-solid fa-microchip"></i> Process Details</h3>
+            <button id="btn-close-panel" class="btn-icon" style="font-size:20px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="side-panel-content" id="side-panel-content">
+            <!-- Content injected via JS -->
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
-
 </html>
