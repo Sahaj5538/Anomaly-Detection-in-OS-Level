@@ -1,83 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OS-Level Process Anomaly Detection</title>
+    <title>CyberSphere XAI Dashboard</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <header>
-        <div class="header-left">
-            <h1>OS-Level Process Anomaly Detection</h1>
-            <p class="subtitle">Machine Learning with Explainable AI (XAI) | Client-Server Architecture</p>
-        </div>
-        <div class="header-right">
-            <div class="status-indicator">
-                <span class="status-dot online" id="server-status-dot"></span>
-                <span id="server-status-text">Server: Running</span>
-            </div>
-            <div class="clients-indicator">
-                <span>Connected Clients: <span id="connected-clients">0</span></span>
-            </div>
-            <div class="last-updated">Last Updated: <span id="last-updated-time">--</span></div>
-        </div>
-    </header>
 
-    <main>
-        <div class="summary-cards">
-            <div class="card summary-card">
-                <h3>Total Processes</h3>
-                <div class="value" id="total-processes">0</div>
+<body class="dark-theme">
+    <div id="landing-page" class="landing-container">
+        <div class="landing-content">
+            <div class="logo-glow"></div>
+            <i class="fa-solid fa-shield-halved landing-icon"></i>
+            <h1 class="landing-title">OS-Level Process Anomaly Detection</h1>
+            <p class="landing-subtitle"></p>
+            <div class="landing-features">
+                <div class="feature-item"><i class="fa-solid fa-microchip"></i> Real-time Monitoring</div>
+                <div class="feature-item"><i class="fa-solid fa-brain"></i> AI Detection</div>
+                <div class="feature-item"><i class="fa-solid fa-magnifying-glass-chart"></i> XAI Insights</div>
             </div>
-            <div class="card summary-card normal-card">
-                <h3>Normal Processes</h3>
-                <div class="value" id="normal-processes">0</div>
-            </div>
-            <div class="card summary-card anomaly-card">
-                <h3>Total Anomalies</h3>
-                <div class="value" id="total-anomalies">0</div>
-            </div>
+            <center>
+                <button id="btn-start-analysis" class="btn-primary btn-large">
+                    <span>
+                        Start Analysis
+                    </span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </center>
         </div>
+    </div>
 
-        <div class="content-grid">
-            <div class="card table-container">
-                <div class="card-header">
-                    <h2>Live Process Monitoring</h2>
-                    <span class="badge">Receiving data from client agents</span>
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Connecting to Secure Server...</p>
+    </div>
+
+    <div id="dashboard-layout" class="hidden">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h2>CyberSphere</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active"><i class="fa-solid fa-border-all"></i> Dashboard</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-list-check"></i> Processes</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-brain"></i> XAI Insights</a>
+            </nav>
+            <div class="sidebar-bottom">
+                <a href="#" class="nav-item"><i class="fa-solid fa-gear"></i> Settings</a>
+                <button id="btn-stop-analysis" class="btn-danger-outline nav-item"
+                    style="width: 100%; justify-content: flex-start; border: 1px solid rgba(239, 68, 68, 0.3); color: #EF4444;">
+                    <i class="fa-solid fa-stop"></i> Stop Analysis
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbot-header">
+                <div class="header-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search processes, PIDs...">
                 </div>
-                <div class="table-wrapper">
-                    <table id="process-table">
-                        <thead>
-                            <tr>
-                                <th>System ID</th>
-                                <th>Process Name</th>
-                                <th>PID</th>
-                                <th>CPU (%)</th>
-                                <th>RAM (MB)</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="process-table-body">
-                            <!-- Rows will be populated by JS -->
-                        </tbody>
-                    </table>
+
+                <div class="header-status">
+                    <div class="status-pill status-running" id="global-server-status">
+                        <span class="pulsing-dot online"></span> <span id="server-status-text">Server Online</span>
+                    </div>
+                    <div class="status-pill">
+                        <i class="fa-solid fa-network-wired"></i> <span id="connected-clients">0</span> Clients
+                    </div>
+                    <div class="status-pill">
+                        <i class="fa-solid fa-clock"></i> <span id="last-updated-time">--:--:--</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <div class="alert-banner hidden" id="critical-alert">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="alert-content">
+                        <strong>Critical Alert:</strong> <span id="alert-message">High severity anomaly detected on
+                            multiple systems.</span>
+                    </div>
+                    <button class="btn-icon"
+                        onclick="document.getElementById('critical-alert').classList.add('hidden')"><i
+                            class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="summary-cards">
+                    <div class="glass-card stat-card accent-indigo">
+                        <div class="stat-icon"><i class="fa-solid fa-microchip"></i></div>
+                        <div class="stat-info">
+                            <h3>Total Processes</h3>
+                            <div class="stat-value" id="total-processes">0</div>
+                        </div>
+                    </div>
+                    <div class="glass-card stat-card accent-green">
+                        <div class="stat-icon"><i class="fa-solid fa-check-shield"></i></div>
+                        <div class="stat-info">
+                            <h3>Normal Processes</h3>
+                            <div class="stat-value" id="normal-processes">0</div>
+                        </div>
+                    </div>
+                    <div class="glass-card stat-card accent-red">
+                        <div class="stat-icon"><i class="fa-solid fa-bug"></i></div>
+                        <div class="stat-info">
+                            <h3>Total Anomalies</h3>
+                            <div class="stat-value" id="total-anomalies">0</div>
+                        </div>
+                    </div>
+                    <div class="glass-card stat-card accent-indigo">
+                        <div class="stat-icon"><i class="fa-solid fa-brain"></i></div>
+                        <div class="stat-info">
+                            <h3>AI Confidence</h3>
+                            <div class="stat-value">98.5%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="glass-card chart-container">
+                        <div class="card-header">
+                            <h3>Global CPU Usage Trend</h3>
+                            <div class="live-badge"><span class="pulsing-dot online"></span> Live</div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card chart-container">
+                        <div class="card-header">
+                            <h3>System Anomalies Trend</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="anomalyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-row">
+                    <div class="glass-card table-section">
+                        <div class="card-header">
+                            <h3>Live Process Feed</h3>
+                            <span class="badge badge-indigo">Receiving data...</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="modern-table" id="process-table">
+                                <thead>
+                                    <tr>
+                                        <th>System ID</th>
+                                        <th>Process Name</th>
+                                        <th>PID</th>
+                                        <th>CPU</th>
+                                        <th>RAM</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="process-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="glass-card xai-section" id="xai-panel">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-brain" style="color:#6366F1;"></i> XAI Explanation</h3>
+                        </div>
+                        <div class="xai-content" id="xai-content">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-arrow-pointer"></i>
+                                <p>Select an anomalous process to view the explainable AI reasoning.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <div class="card explanation-panel" id="xai-panel">
-                <div class="card-header">
-                    <h2>XAI Explanation</h2>
-                </div>
-                <div class="explanation-content" id="xai-content">
-                    <div class="placeholder-text">Select a process to view anomaly explanation.</div>
-                </div>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>
