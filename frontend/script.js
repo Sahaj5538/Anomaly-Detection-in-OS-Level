@@ -73,7 +73,9 @@ const state = {
 
     // Monitoring State Tracker
     monitored: {},
-    ignored: {}
+    ignored: {},
+    originalProcesses: [],
+    lastXAIDataHash: ''
 };
 
 // ---- Boot Initialization ----
@@ -211,9 +213,13 @@ async function fetchTelemetry() {
         const json = await res.json();
         const backendData = Array.isArray(json) ? json : [json];
 
-        raw = backendData.map(item => ({
-            id: item.id || `req_${Math.random().toString(36).substr(2, 9)}`,
-            system_id: item.system_id || 'Local-Node', // Fallback to Local-Node if not provided
+        raw = backendData.map(item => {
+            const sysId = item.system_id || 'Local-Node';
+            const proc = item.process || 'Unknown';
+            const pid = item.pid || 0;
+            return {
+            id: item.id || `${sysId}_${proc}_${pid}`,
+            system_id: sysId,
             process: item.process || 'Unknown',
             pid: item.pid || 0,
             cpu: item.cpu !== undefined ? parseFloat(item.cpu.toFixed(1)) : 0,
@@ -221,8 +227,9 @@ async function fetchTelemetry() {
             risk_level: item.risk_level || 'Low',
             reason: item.reason || 'No reason provided',
             recommended_action: item.recommended_action || 'No action needed',
+            recommended_action: item.recommended_action || 'No action needed',
             confidence: item.confidence || null
-        }));
+        };});
 
         // Update UI status to Online
         if (state.isAnalyzing) {
@@ -253,7 +260,10 @@ async function fetchTelemetry() {
 function processIncomingData(data) {
     els.lastUpdated.textContent = new Date().toLocaleTimeString();
 
-    // Apply Monitoring & Ignoring Logic FIRST
+    // 1. Snapshot raw ML output BEFORE any local state mutation
+    state.originalProcesses = JSON.parse(JSON.stringify(data));
+
+    // 2. Apply Monitoring & Ignoring Logic
     data.forEach(d => {
         const key = `${d.system_id}_${d.process}`;
 
@@ -284,6 +294,18 @@ function processIncomingData(data) {
         }
     });
 
+    // Merge incoming data with existing state to preserve simulating flags across polling
+    data.forEach(d => {
+        const existing = state.rawTelemetry.find(old => old.id === d.id);
+        if (existing && existing.isSimulating) {
+            d.isSimulating = true;
+            d.risk_level = existing.risk_level;
+            d.reason = existing.reason;
+            d.isMonitored = existing.isMonitored;
+            d.isIgnored = existing.isIgnored;
+        }
+    });
+
     state.rawTelemetry = data;
 
     const highMedRisks = data.filter(d => d.risk_level === 'High' || d.risk_level === 'Medium');
@@ -307,7 +329,10 @@ function processIncomingData(data) {
     renderFullTable();
     renderSystemsView(data);
     renderAlertsView();
-    renderXAIPage(highMedRisks);
+    
+    // XAI Chart purely from unaltered ML baseline
+    const pureRisks = state.originalProcesses.filter(d => d.risk_level === 'High' || d.risk_level === 'Medium');
+    renderXAIPage(pureRisks);
 }
 
 // ---- Global Statistics Updates ----
@@ -327,6 +352,45 @@ function updateGlobalStats(data, riskCount) {
 }
 
 // ---- Render Table logic ----
+function simulateDeepAnalysis(processObj) {
+    let finalRisk = 'Safe';
+    let signature = 'Trusted';
+    let reasons = [];
+
+    // Deterministic rules based on user criteria
+    const procName = processObj.process.toLowerCase();
+    const isUnknown = ['unknown.exe', 'temp_exec.exe', 'payload.dll', 'malware.exe'].includes(procName);
+    
+    if (isUnknown) signature = 'Unknown';
+
+    if (signature === 'Unknown' && processObj.cpu > 60) {
+        finalRisk = 'High';
+        reasons.push('High resource consumption accompanied by unknown signature.');
+    } else if (processObj.cpu > 70 || processObj.memory > 1000) {
+        reasons.push('High resource usage but verified trusted process.');
+    } else {
+        reasons.push('Process activity is within standard baselines.');
+    }
+
+    if (finalRisk === 'High') {
+        reasons.push('Malware heuristics match. High Risk assigned.');
+    }
+
+    return {
+        finalRisk: finalRisk,
+        reason: reasons.join(' '),
+        signature: signature
+    };
+}
+
+function updateRowDOM(item) {
+    const mainTr = document.getElementById(`row-main-${item.id}`);
+    if (mainTr) {
+        const newRow = createRow(item);
+        mainTr.replaceWith(newRow);
+    }
+}
+
 window.handleActionClick = function (e, actionType, id) {
     if (e) e.stopPropagation();
     const item = state.rawTelemetry.find(d => d.id === id);
@@ -339,25 +403,20 @@ window.handleActionClick = function (e, actionType, id) {
         if (state.monitored[key]) delete state.monitored[key];
         state.ignored[key] = { sys: item.system_id, proc: item.process };
 
-        const idx = state.rawTelemetry.findIndex(d => d.id === id);
-        if (idx > -1) {
-            state.rawTelemetry[idx].risk_level = 'Low';
-            state.rawTelemetry[idx].recommended_action = 'Ignored by user';
-            state.rawTelemetry[idx].isIgnored = true;
-            state.rawTelemetry[idx].isMonitored = false;
-        }
+        item.risk_level = 'Low';
+        item.recommended_action = 'Ignored by user';
+        item.isIgnored = true;
+        item.isMonitored = false;
 
-        renderDashboardMiniTable();
-        renderFullTable();
+        updateRowDOM(item);
+
     } else if (actionType === 'unignore') {
         const key = `${item.system_id}_${item.process}`;
         if (state.ignored[key]) delete state.ignored[key];
 
-        const idx = state.rawTelemetry.findIndex(d => d.id === id);
-        if (idx > -1) state.rawTelemetry[idx].isIgnored = false;
+        item.isIgnored = false;
+        updateRowDOM(item);
 
-        renderDashboardMiniTable();
-        renderFullTable();
     } else if (actionType === 'monitor') {
         const key = `${item.system_id}_${item.process}`;
         if (state.ignored[key]) delete state.ignored[key];
@@ -365,42 +424,31 @@ window.handleActionClick = function (e, actionType, id) {
         if (!state.monitored[key] || state.monitored[key].status !== 'analyzing') {
             state.monitored[key] = { sys: item.system_id, proc: item.process, status: 'analyzing' };
 
-            const idx = state.rawTelemetry.findIndex(d => d.id === id);
-            if (idx > -1) {
-                state.rawTelemetry[idx].isMonitored = true;
-                state.rawTelemetry[idx].isIgnored = false;
-                state.rawTelemetry[idx].isSimulating = true;
-                state.rawTelemetry[idx].reason = 'Deep analysis in progress...';
-            }
+            item.isMonitored = true;
+            item.isIgnored = false;
+            item.isSimulating = true;
+            item.reason = 'Deep analysis in progress...';
+            
+            updateRowDOM(item);
 
-            // Force refresh UI immediately
-            renderDashboardMiniTable();
-            renderFullTable();
-
-            // Simulate Deep Analysis
+            // Simulate Deep Analysis deterministically
             setTimeout(() => {
-                // 50/50 Chance between Safe and High Risk for simulation
-                const isSafe = Math.random() > 0.5;
-                if (isSafe) {
-                    state.monitored[key].status = 'Safe';
-                    state.monitored[key].reason = 'Deep analysis: Trusted signature verified despite high resources.';
-                } else {
-                    state.monitored[key].status = 'High';
-                    state.monitored[key].reason = 'Deep analysis: Unknown signature matching malware heuristics.';
-                }
+                const processToAnalyze = state.rawTelemetry.find(d => d.id === id);
+                if (!processToAnalyze) return; // Process disappeared
                 
-                // Update local item immediately so side panel works
-                const updatedIdx = state.rawTelemetry.findIndex(d => d.id === id);
-                if (updatedIdx > -1) {
-                    state.rawTelemetry[updatedIdx].isSimulating = false;
-                    state.rawTelemetry[updatedIdx].risk_level = isSafe ? 'Low' : 'High';
-                    state.rawTelemetry[updatedIdx].reason = state.monitored[key].reason;
-                    state.rawTelemetry[updatedIdx].recommended_action = isSafe ? 'No action needed' : 'Isolate system immediately';
-                    
-                    renderDashboardMiniTable();
-                    renderFullTable();
-                    openSidePanel(state.rawTelemetry[updatedIdx]);
-                }
+                const analysisObj = simulateDeepAnalysis(processToAnalyze);
+                
+                state.monitored[key].status = analysisObj.finalRisk === 'Safe' ? 'Safe' : 'High';
+                state.monitored[key].reason = `Deep analysis: ${analysisObj.reason} (Signature: ${analysisObj.signature})`;
+                
+                processToAnalyze.isSimulating = false;
+                processToAnalyze.risk_level = analysisObj.finalRisk === 'Safe' ? 'Low' : 'High';
+                processToAnalyze.reason = state.monitored[key].reason;
+                processToAnalyze.recommended_action = analysisObj.finalRisk === 'Safe' ? 'No action needed' : 'Isolate system immediately';
+                
+                updateRowDOM(processToAnalyze);
+                openSidePanel(processToAnalyze);
+                
             }, 3000);
         }
     }
@@ -408,6 +456,7 @@ window.handleActionClick = function (e, actionType, id) {
 
 function createRow(item) {
     const tr = document.createElement('tr');
+    tr.id = `row-main-${item.id}`;
     tr.onclick = () => openSidePanel(item); // Row click defaults to View Details
 
     let rowClasses = [];
@@ -461,8 +510,7 @@ function createRow(item) {
     }
 
     tr.innerHTML = `
-        ${alignHtml}
-        <td><i class="fa-solid fa-server" style="color: #6366F1; margin-right: 6px;"></i> ${item.system_id}</td>
+        <td style="position:static;">${alignHtml}<i class="fa-solid fa-server" style="color: #6366F1; margin-right: 6px;"></i> ${item.system_id}</td>
         <td style="font-family:monospace; font-weight:600; color: #fff;">${iconHtml} ${item.process} ${badgesHtml}</td>
         <td style="color: var(--text-muted)">${item.pid}</td>
         <td>${statusHtml}</td>
@@ -639,9 +687,20 @@ function renderXAIPage(risks) {
     const pNames = Object.keys(procMap).sort((a, b) => procMap[b] - procMap[a]).slice(0, 5);
     const pValues = pNames.map(p => procMap[p]);
 
-    state.charts.suspicious.data.labels = pNames;
-    state.charts.suspicious.data.datasets[0].data = pValues;
-    state.charts.suspicious.update();
+    // Avoid unnecessary re-renders of the pie chart
+    const currentDataHash = pNames.join(',') + '|' + pValues.join(',');
+    if (state.lastXAIDataHash !== currentDataHash) {
+        state.charts.suspicious.data.labels = pNames;
+        state.charts.suspicious.data.datasets[0].data = pValues;
+        state.charts.suspicious.update();
+        state.lastXAIDataHash = currentDataHash;
+        
+        // Add Data Snapshot Time label
+        const xaiSubtitle = document.querySelector('#view-xai .page-header p');
+        if (xaiSubtitle) {
+            xaiSubtitle.innerHTML = `Aggregated analytics directly from the Isolation Forest ML model.<br><span style="color:var(--neon-cyan); font-size: 11px; text-transform:uppercase; font-weight:700;">Data Baseline Captured: ${new Date().toLocaleTimeString()}</span>`;
+        }
+    }
 }
 
 // ---- Slide-in Panel Logic (XAI Explanation) ----
